@@ -70,7 +70,7 @@ class PhotoViewModel(application: Application) : AndroidViewModel(application) {
                 detailsCache[photo.id]?.let(photo::withDetails) ?: photo
             }
             loadState.value = LoadState.Loaded
-            resolveDetails(photos.filter { it.id !in detailsCache })
+            resolveDetails(photos.filter { !detailsCache.containsKey(it.id) })
         }
     }
 
