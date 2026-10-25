@@ -43,6 +43,9 @@ import coil.request.ImageRequest
 import com.fotoloco.app.data.PhotoItem
 import com.fotoloco.app.data.PhotoLocation
 
+/** Red so it's obvious which photos are about to be deleted. */
+private val SelectedRed = Color(0xFFD32F2F)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PhotoCardItem(
@@ -89,19 +92,19 @@ fun PhotoCardItem(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                            .background(SelectedRed.copy(alpha = 0.3f)),
                     )
                 }
                 Icon(
                     imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
                     contentDescription = if (selected) "Selected" else "Not selected",
-                    tint = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+                    tint = if (selected) SelectedRed else Color.White,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(12.dp)
                         .size(32.dp)
                         .background(
-                            if (selected) MaterialTheme.colorScheme.onPrimary else Color.Black.copy(alpha = 0.3f),
+                            if (selected) Color.White else Color.Black.copy(alpha = 0.3f),
                             CircleShape,
                         ),
                 )
