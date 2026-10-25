@@ -5,6 +5,7 @@ An Android app that shows your photos as a card feed with **when** and **where**
 - Each card shows the photo, the date and time ("Oct 24, 2026 • 2:15 PM"), and the place ("Eagle Mountain, UT").
 - Tap a photo to open a full-screen viewer: swipe for the next photo, pinch or double-tap to zoom, tap or press back to return.
 - Tap a place to show only photos from there. Tap the "Filtered by" chip to clear it.
+- Swipe left (or tap **Places** at the bottom) to see every place your photos were taken, with a cover photo and count. Tap one to see its photos.
 
 ## Install on your phone
 
@@ -29,6 +30,7 @@ Kotlin, Jetpack Compose, Material 3, MVVM (`ViewModel` + `StateFlow`), Coil for 
 | `PhotoViewModel.kt` | Feed state, background metadata loading, location filter |
 | `ui/feed/PhotoFeedScreen.kt` | Feed, filter chip, permission/empty/loading states |
 | `ui/feed/PhotoCard.kt` | One photo card |
+| `ui/places/PlacesScreen.kt` | Grid of every place with a cover photo and count |
 | `ui/viewer/FullScreenViewer.kt` | Full-screen pager with pinch-to-zoom |
 
 The APK is signed with `app/sideload.keystore` so updates install cleanly. That key is public in this repo, so it's fine for personal sideloading but shouldn't be used for a Play Store release.

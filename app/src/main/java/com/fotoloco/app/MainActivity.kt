@@ -5,6 +5,19 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import com.fotoloco.app.ui.places.PlacesScreen
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -29,6 +42,9 @@ import com.fotoloco.app.ui.feed.PhotoFeedScreen
 import com.fotoloco.app.ui.theme.FotoLocoTheme
 import com.fotoloco.app.ui.viewer.FullScreenViewer
 import kotlinx.coroutines.launch
+
+private const val PAGE_PHOTOS = 0
+private const val PAGE_PLACES = 1
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,33 +88,82 @@ private fun FotoLocoApp(viewModel: PhotoViewModel = viewModel()) {
         onPauseOrDispose { }
     }
 
+    val pagerState = rememberPagerState { 2 }
+    val goToPage: (Int) -> Unit = { page -> scope.launch { pagerState.animateScrollToPage(page) } }
+
+    // Back on the Places screen returns to Photos instead of leaving the app.
+    BackHandler(enabled = pagerState.currentPage != PAGE_PHOTOS && viewerIndex == null) {
+        goToPage(PAGE_PHOTOS)
+    }
+
     Box(Modifier.fillMaxSize()) {
-        PhotoFeedScreen(
-            state = state,
-            listState = listState,
-            hasPermission = hasPermission,
-            permissionDenied = permissionDenied,
-            partialAccess = partialAccess,
-            onRequestPermission = { permissionLauncher.launch(MediaPermissions.toRequest()) },
-            onOpenSettings = {
-                context.startActivity(
-                    Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.packageName, null),
-                    ),
-                )
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == PAGE_PHOTOS,
+                        onClick = { goToPage(PAGE_PHOTOS) },
+                        icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                        label = { Text("Photos") },
+                    )
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == PAGE_PLACES,
+                        onClick = { goToPage(PAGE_PLACES) },
+                        icon = { Icon(Icons.Filled.LocationOn, contentDescription = null) },
+                        label = { Text("Places") },
+                    )
+                }
             },
-            onRefresh = viewModel::loadPhotos,
-            onPhotoClick = { viewerIndex = it },
-            onLocationClick = { label ->
-                viewModel.setLocationFilter(label)
-                scope.launch { listState.scrollToItem(0) }
-            },
-            onClearFilter = {
-                viewModel.clearLocationFilter()
-                scope.launch { listState.scrollToItem(0) }
-            },
-        )
+        ) { padding ->
+            HorizontalPager(
+                state = pagerState,
+                beyondViewportPageCount = 1,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = padding.calculateBottomPadding()),
+            ) { page ->
+                when (page) {
+                    PAGE_PHOTOS -> PhotoFeedScreen(
+                        state = state,
+                        listState = listState,
+                        hasPermission = hasPermission,
+                        permissionDenied = permissionDenied,
+                        partialAccess = partialAccess,
+                        onRequestPermission = { permissionLauncher.launch(MediaPermissions.toRequest()) },
+                        onOpenSettings = {
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null),
+                                ),
+                            )
+                        },
+                        onRefresh = viewModel::loadPhotos,
+                        onPhotoClick = { viewerIndex = it },
+                        onLocationClick = { label ->
+                            viewModel.setLocationFilter(label)
+                            scope.launch { listState.scrollToItem(0) }
+                        },
+                        onClearFilter = {
+                            viewModel.clearLocationFilter()
+                            scope.launch { listState.scrollToItem(0) }
+                        },
+                    )
+                    else -> PlacesScreen(
+                        places = state.places,
+                        pendingCount = state.pendingLocationCount,
+                        hasPhotos = state.totalCount > 0,
+                        onPlaceClick = { label ->
+                            viewModel.setLocationFilter(label)
+                            scope.launch {
+                                listState.scrollToItem(0)
+                                pagerState.animateScrollToPage(PAGE_PHOTOS)
+                            }
+                        },
+                    )
+                }
+            }
+        }
 
         val startIndex = viewerIndex
         if (startIndex != null && state.photos.isNotEmpty()) {

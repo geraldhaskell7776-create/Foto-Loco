@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fotoloco.app.data.PhotoDetails
 import com.fotoloco.app.data.PhotoItem
+import com.fotoloco.app.data.PhotoLocation
 import com.fotoloco.app.data.PhotoRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,6 +30,17 @@ data class FeedUiState(
     val photos: List<PhotoItem> = emptyList(),
     val totalCount: Int = 0,
     val locationFilter: String? = null,
+    /** Every place that has photos, most photos first. */
+    val places: List<PlaceSummary> = emptyList(),
+    /** Photos whose location hasn't been read yet. */
+    val pendingLocationCount: Int = 0,
+)
+
+data class PlaceSummary(
+    val label: String,
+    val photoCount: Int,
+    /** Newest photo taken there. */
+    val cover: PhotoItem,
 )
 
 class PhotoViewModel(application: Application) : AndroidViewModel(application) {
@@ -50,6 +62,8 @@ class PhotoViewModel(application: Application) : AndroidViewModel(application) {
                 photos = if (filter == null) photos else photos.filter { it.locationLabel == filter },
                 totalCount = photos.size,
                 locationFilter = filter,
+                places = summarizePlaces(photos),
+                pendingLocationCount = photos.count { it.location == PhotoLocation.Pending },
             )
         }
             .flowOn(Dispatchers.Default)
@@ -97,6 +111,15 @@ class PhotoViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private fun summarizePlaces(photos: List<PhotoItem>): List<PlaceSummary> =
+        photos
+            .filter { it.locationLabel != null }
+            .groupBy { it.locationLabel!! }
+            .map { (label, group) ->
+                PlaceSummary(label, group.size, group.maxBy { it.takenAtMillis })
+            }
+            .sortedWith(compareByDescending<PlaceSummary> { it.photoCount }.thenBy { it.label })
 
     private companion object {
         const val BATCH_SIZE = 12
