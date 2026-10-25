@@ -1,0 +1,116 @@
+package com.fotoloco.app
+
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.provider.Settings
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fotoloco.app.data.MediaPermissions
+import com.fotoloco.app.ui.feed.PhotoFeedScreen
+import com.fotoloco.app.ui.theme.FotoLocoTheme
+import com.fotoloco.app.ui.viewer.FullScreenViewer
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        setContent {
+            FotoLocoTheme {
+                FotoLocoApp()
+            }
+        }
+    }
+}
+
+@Composable
+private fun FotoLocoApp(viewModel: PhotoViewModel = viewModel()) {
+    val context = LocalContext.current
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    var hasPermission by remember { mutableStateOf(MediaPermissions.canReadPhotos(context)) }
+    var partialAccess by remember { mutableStateOf(MediaPermissions.hasPartialAccess(context)) }
+    var permissionDenied by rememberSaveable { mutableStateOf(false) }
+    var viewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        hasPermission = MediaPermissions.canReadPhotos(context)
+        partialAccess = MediaPermissions.hasPartialAccess(context)
+        permissionDenied = !hasPermission
+        if (hasPermission) viewModel.loadPhotos()
+    }
+
+    // Re-check on every return to the app: the user may have changed access in Settings
+    // or taken new photos.
+    LifecycleResumeEffect(Unit) {
+        hasPermission = MediaPermissions.canReadPhotos(context)
+        partialAccess = MediaPermissions.hasPartialAccess(context)
+        if (hasPermission) viewModel.loadPhotos()
+        onPauseOrDispose { }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        PhotoFeedScreen(
+            state = state,
+            listState = listState,
+            hasPermission = hasPermission,
+            permissionDenied = permissionDenied,
+            partialAccess = partialAccess,
+            onRequestPermission = { permissionLauncher.launch(MediaPermissions.toRequest()) },
+            onOpenSettings = {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null),
+                    ),
+                )
+            },
+            onRefresh = viewModel::loadPhotos,
+            onPhotoClick = { viewerIndex = it },
+            onLocationClick = { label ->
+                viewModel.setLocationFilter(label)
+                scope.launch { listState.scrollToItem(0) }
+            },
+            onClearFilter = {
+                viewModel.clearLocationFilter()
+                scope.launch { listState.scrollToItem(0) }
+            },
+        )
+
+        val startIndex = viewerIndex
+        if (startIndex != null && state.photos.isNotEmpty()) {
+            FullScreenViewer(
+                photos = state.photos,
+                initialPage = startIndex.coerceIn(0, state.photos.lastIndex),
+                onDismiss = { page ->
+                    viewerIndex = null
+                    val offset = if (partialAccess) 1 else 0 // "Choose more" row sits above the photos
+                    scope.launch { listState.scrollToItem(page + offset) }
+                },
+            )
+        }
+    }
+}
