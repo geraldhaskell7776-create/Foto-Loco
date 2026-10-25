@@ -88,6 +88,15 @@ class PhotoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Drops deleted photos right away, then re-syncs with MediaStore. */
+    fun onPhotosDeleted(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        val gone = ids.toSet()
+        gone.forEach { detailsCache.remove(it) }
+        allPhotos.update { list -> list.filterNot { it.id in gone } }
+        loadPhotos()
+    }
+
     fun setLocationFilter(label: String) {
         locationFilter.value = label
     }

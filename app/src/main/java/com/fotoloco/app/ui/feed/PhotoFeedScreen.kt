@@ -1,5 +1,6 @@
 package com.fotoloco.app.ui.feed
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
@@ -58,13 +60,36 @@ fun PhotoFeedScreen(
     onPhotoClick: (index: Int) -> Unit,
     onLocationClick: (String) -> Unit,
     onClearFilter: () -> Unit,
+    selectedIds: Set<Long>,
+    onToggleSelected: (Long) -> Unit,
+    onClearSelection: () -> Unit,
+    onDeleteSelected: () -> Unit,
 ) {
+    val selectionMode = selectedIds.isNotEmpty()
+    BackHandler(enabled = selectionMode, onBack = onClearSelection)
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            TopAppBar(
+            if (selectionMode) {
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(onClick = onClearSelection) {
+                            Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                        }
+                    },
+                    title = { Text("${selectedIds.size} selected") },
+                    actions = {
+                        IconButton(onClick = onDeleteSelected) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete selected photos")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                )
+            } else TopAppBar(
                 title = {
                     Column {
                         Text("Foto Loco", style = MaterialTheme.typography.titleLarge)
@@ -150,7 +175,12 @@ fun PhotoFeedScreen(
                             photo = photo,
                             isFilterActive = state.locationFilter != null &&
                                 photo.locationLabel == state.locationFilter,
-                            onPhotoClick = { onPhotoClick(index) },
+                            selectionMode = selectionMode,
+                            selected = photo.id in selectedIds,
+                            onPhotoClick = {
+                                if (selectionMode) onToggleSelected(photo.id) else onPhotoClick(index)
+                            },
+                            onPhotoLongClick = { onToggleSelected(photo.id) },
                             onLocationClick = onLocationClick,
                             modifier = Modifier.animateItem(),
                         )

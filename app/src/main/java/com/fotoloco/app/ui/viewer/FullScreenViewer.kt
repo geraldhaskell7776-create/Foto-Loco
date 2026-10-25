@@ -26,6 +26,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -73,6 +74,7 @@ fun FullScreenViewer(
     photos: List<PhotoItem>,
     initialPage: Int,
     onDismiss: (page: Int) -> Unit,
+    onDelete: (PhotoItem) -> Unit,
 ) {
     val pagerState = rememberPagerState(initialPage = initialPage) { photos.size }
     var currentPageZoomed by remember { mutableStateOf(false) }
@@ -122,8 +124,15 @@ fun FullScreenViewer(
                 "${pagerState.currentPage + 1} / ${photos.size}",
                 color = Color.White,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(end = 16.dp),
+                modifier = Modifier.padding(end = 4.dp),
             )
+            val current = photos.getOrNull(pagerState.currentPage)
+            IconButton(
+                onClick = { current?.let(onDelete) },
+                enabled = current != null,
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete photo", tint = Color.White)
+            }
         }
 
         if (photo != null) {

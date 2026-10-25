@@ -1,6 +1,14 @@
 package com.fotoloco.app.ui.feed
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,11 +43,15 @@ import coil.request.ImageRequest
 import com.fotoloco.app.data.PhotoItem
 import com.fotoloco.app.data.PhotoLocation
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PhotoCardItem(
     photo: PhotoItem,
     isFilterActive: Boolean,
+    selectionMode: Boolean,
+    selected: Boolean,
     onPhotoClick: () -> Unit,
+    onPhotoLongClick: () -> Unit,
     onLocationClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -49,21 +61,52 @@ fun PhotoCardItem(
         shape = shape,
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp),
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(photo.uri)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Photo taken ${photo.dateLabel}",
-            contentScale = ContentScale.Crop,
-            placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
-            error = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier
+        Box(
+            Modifier
                 .fillMaxWidth()
                 .aspectRatio(4f / 3f)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .clickable(onClickLabel = "View full screen", onClick = onPhotoClick),
-        )
+                .combinedClickable(
+                    onClickLabel = if (selectionMode) "Select" else "View full screen",
+                    onLongClickLabel = "Select",
+                    onLongClick = onPhotoLongClick,
+                    onClick = onPhotoClick,
+                ),
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photo.uri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Photo taken ${photo.dateLabel}",
+                contentScale = ContentScale.Crop,
+                placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                error = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (selectionMode) {
+                if (selected) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                    )
+                }
+                Icon(
+                    imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                    contentDescription = if (selected) "Selected" else "Not selected",
+                    tint = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .size(32.dp)
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.onPrimary else Color.Black.copy(alpha = 0.3f),
+                            CircleShape,
+                        ),
+                )
+            }
+        }
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Text(
                 text = photo.dateLabel,

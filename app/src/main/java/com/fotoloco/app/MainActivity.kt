@@ -18,6 +18,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.fotoloco.app.ui.places.PlacesScreen
+import com.fotoloco.app.ui.rememberPhotoDeleter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -69,6 +70,12 @@ private fun FotoLocoApp(viewModel: PhotoViewModel = viewModel()) {
     var partialAccess by remember { mutableStateOf(MediaPermissions.hasPartialAccess(context)) }
     var permissionDenied by rememberSaveable { mutableStateOf(false) }
     var viewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
+
+    val deletePhotos = rememberPhotoDeleter { deletedIds ->
+        selectedIds = selectedIds - deletedIds.toSet()
+        viewModel.onPhotosDeleted(deletedIds)
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -148,6 +155,14 @@ private fun FotoLocoApp(viewModel: PhotoViewModel = viewModel()) {
                             viewModel.clearLocationFilter()
                             scope.launch { listState.scrollToItem(0) }
                         },
+                        selectedIds = selectedIds,
+                        onToggleSelected = { id ->
+                            selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+                        },
+                        onClearSelection = { selectedIds = emptySet() },
+                        onDeleteSelected = {
+                            deletePhotos(state.photos.filter { it.id in selectedIds })
+                        },
                     )
                     else -> PlacesScreen(
                         places = state.places,
@@ -175,6 +190,7 @@ private fun FotoLocoApp(viewModel: PhotoViewModel = viewModel()) {
                     val offset = if (partialAccess) 1 else 0 // "Choose more" row sits above the photos
                     scope.launch { listState.scrollToItem(page + offset) }
                 },
+                onDelete = { photo -> deletePhotos(listOf(photo)) },
             )
         }
     }

@@ -23,7 +23,10 @@ object MediaPermissions {
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.ACCESS_MEDIA_LOCATION,
         )
-        else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        else -> arrayOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        )
     }
 
     /** True when the app can see at least some photos (full or "selected photos" access). */
